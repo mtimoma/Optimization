@@ -1,0 +1,2 @@
+# Optimization
+Adaptive stimulus selection
