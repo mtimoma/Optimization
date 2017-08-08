@@ -248,6 +248,8 @@ for i in range(300):
             print('Cluster: ' + clusters[checkC])
             print('Stimuli: ' + str(i))
             break
+        else:
+            count = [0]*6
     if i == 299 and checkC == None:
         print('Unclassified')
         break
