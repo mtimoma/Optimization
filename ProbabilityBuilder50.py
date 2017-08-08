@@ -142,7 +142,7 @@ for neuron in cluster[2]:
     blue = blue + resph[int(neuron[0]) - 1]*int(neuron[1])
 # average normalized mean response from blue cluster neurons per stimulus
 blue = blue / np.sum(cluster[2], axis = 0)[1]
-blue = blue / max(blue)
+#blue = blue / max(blue)
 Pr_h.append(blue)
 
 #GREEN and PURPLE and GRAY
