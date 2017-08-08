@@ -242,6 +242,8 @@ for n in range(cells):
                     mf.write(clusters[checkC] + ',')
                     mf.write(str(i) + ',,')
                     break
+                else:
+                    count = [0]*6
             if i == 299 and checkC == None:
                 mf.write('Unclassified,300,,')
                 break
@@ -262,6 +264,8 @@ for n in range(cells):
                     uf.write(clusters[checkC] + ',')
                     uf.write(str(i) + ',,')
                     break
+                else:
+                    count = [0]*6
             if i == 299 and checkC == None:
                 uf.write('Unclassified,300,,')
                 break
