@@ -17,8 +17,12 @@ class Oracle(object):
 def argmax(oracle,all_elements):
 
     max_imp = -999999999
+    total = len(stim)
 
     for a in all_elements:
+        
+        if a in stim[total-5:total+1]:
+            continue
 
         imp = oracle.evaluate(a)
 
@@ -133,7 +137,7 @@ def entropy(P):
 def check(GC):
     global count
     global rot
-       
+
     prob_red = sum(GC.oracle.Ph[0:8])
     prob_brown = sum(GC.oracle.Ph[8:16])
     prob_blue = GC.oracle.Ph[16]
@@ -141,6 +145,7 @@ def check(GC):
     prob_purple = sum(GC.oracle.Ph[25:33])
     prob_gray = sum(GC.oracle.Ph[33:41])
 
+    # check if any hypothesis has probability greater than 0.999
     if prob_red > 0.999:
         count[0] += 1
         rot = GC.oracle.Ph.tolist().index(max(GC.oracle.Ph[0:8]))
@@ -162,16 +167,19 @@ def check(GC):
     else:
         count = [0,0,0,0,0,0]
 
+    # if hypothesis had probability greater than 0.999 for last 10 times
+    # return that hypothesis
     if 10 in count:
         return count.index(10)
 
-def checkPearsonR(responses,rot):
+def checkPearsonR(stim,responses,rot):
     expected = []
-    for each in list(responses.keys()):
+    for each in stim:
         expected.append(ideal[rot][each])
 
     #print(np.corrcoef(expected,list(responses.values()))[0][1])
-    return np.corrcoef(expected,list(responses.values()))[0][1]
+    # find correlation coefficient between unknown cell's responses and ideal cell
+    return np.corrcoef(expected,responses)[0][1]
     
 def neuron_resp(a):
     #
@@ -182,7 +190,6 @@ def neuron_resp(a):
     #  50 times the mean responses of neuron '0' to stimulus 'a'
     #
     #  Added by Wyeth to control random seed
-    np.random.seed(seednum)
     return np.random.poisson(50*X[neuronnum-1][a])
 
 
@@ -200,6 +207,7 @@ ideal = np.load('./data/ideal50.npy')
 # which neurons to test
 neuronnum = int(input('Neuron: '))
 seednum = int(input('Seed: '))
+np.random.seed(seednum)
 
 clusters = ['Red','Brown','Blue','Green','Purple','Gray']
 
@@ -215,22 +223,26 @@ print('\n'+'Mutual Information')
 NC = Information_utility(probh,ph,neuron_resp)
 GC = greedy(NC,list(range(362)),300)
 count = [0]*6
-responses = {}
+stim = []
+responses = []
 rot = 0
 for i in range(300):
     stimShown = GC.solve()
 
-    responses[stimShown] = GC.oracle.response
+    stim.append(stimShown)
+    responses.append(GC.oracle.response)
     checkC = check(GC)
     if checkC != None:
-        if checkPearsonR(responses,rot) >= 0.6:
+        if checkPearsonR(stim,responses,rot) >= 0.6:
             print('Cluster: ' + clusters[checkC])
             print('Stimuli: ' + str(i))
             break
+        else:
+            count = [0]*6
     if i == 299 and checkC == None:
         print('Unclassified')
         break
-
+'''
 # Uncertainty
 print('\n'+'Uncertainty')
 NC_Dual = Uncertainty_utility(probh,ph,neuron_resp)
@@ -248,8 +260,13 @@ for i in range(300):
             print('Cluster: ' + clusters[checkC])
             print('Stimuli: ' + str(i))
             break
-        else:
-            count = [0]*6
     if i == 299 and checkC == None:
         print('Unclassified')
         break
+'''
+
+'''
+#pearsonR for cell with ideal red cells
+for i in range(8):
+    print(np.corrcoef(50*X[37],ideal[i]))
+'''
