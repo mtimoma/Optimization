@@ -167,13 +167,14 @@ def check(GC):
     if 10 in count:
         return count.index(10)
 
-def checkPearsonR(responses,rot):
+def checkPearsonR(stim,responses,rot):
     expected = []
-    for each in list(responses.keys()):
+    for each in stim:
         expected.append(ideal[rot][each])
 
-    print(np.corrcoef(expected,list(responses.values()))[0][1])
-    return np.corrcoef(expected,list(responses.values()))[0][1]
+    #print(np.corrcoef(expected,list(responses.values()))[0][1])
+    # find correlation coefficient between unknown cell's responses and ideal cell
+    return np.corrcoef(expected,responses)[0][1]
     
 def neuron_resp(a):
     #
@@ -184,7 +185,7 @@ def neuron_resp(a):
     #  50 times the mean responses of neuron '0' to stimulus 'a'
     #
     #  Added by Wyeth to control random seed
-    np.random.seed(seednum)
+    
     return np.random.poisson(50*X[neuronnum-1][a])
 
 
@@ -202,6 +203,7 @@ ideal = np.load('./data/ideal50.npy')
 # which neurons to test
 neuronnum = int(input('Neuron: '))
 seednum = int(input('Seed: '))
+np.random.seed(seednum)
 
 clusters = ['Red','Brown','Blue','Green','Purple','Gray']
 
@@ -212,20 +214,33 @@ ph = np.array([.02]*16 + [0.2] + [.02]*24)
 # Create Objects and Run Simulation #
 ####################################
 
+f = open(str(neuronnum)+'-'+str(seednum)+'.csv','w')
+f.write('Stimulus,Response,Ph')
+
 # Mutual Information
 print('\n'+'Mutual Information')
 NC = Information_utility(probh,ph,neuron_resp)
 GC = greedy(NC,list(range(362)),300)
 count = [0]*6
-responses = {}
+stim = []
+responses = []
 rot = 0
 for i in range(300):
+    #seednum+=100
+
+    f.write('\n')
     stimShown = GC.solve()
 
-    responses[stimShown] = GC.oracle.response
+    stim.append(stimShown)
+    f.write(str(stim[i])+',')
+    responses.append(GC.oracle.response)
+    f.write(str(responses[i])+',')
+    for p in range(len(GC.oracle.Ph)):
+        f.write(str(GC.oracle.Ph[p])+',')
+
     checkC = check(GC)
     if checkC != None:
-        if checkPearsonR(responses,rot) >= 0.6:
+        if checkPearsonR(stim,responses,rot) >= 0.6:
             print('Cluster: ' + clusters[checkC])
             print('Stimuli: ' + str(i))
             break
@@ -253,7 +268,11 @@ ax.plot(np.array(NCP))
 ax.set_xlabel('number of stimuli sampled',fontsize = 16)
 ax.set_ylabel('P(h)',fontsize = 16)
 
+f.close()
+
 plt.show()
+plt.savefig(str(neuronnum)+'-'+str(seednum)+'.png')
+
 '''
 # Uncertainty
 print('\n'+'Uncertainty')
