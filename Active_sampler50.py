@@ -21,6 +21,7 @@ def argmax(oracle,all_elements):
 
     for a in all_elements:
         
+        #used to not show same stimuli consecutively
         if a in stim[total-5:total+1]:
             continue
 
@@ -29,9 +30,7 @@ def argmax(oracle,all_elements):
         if imp > max_imp:
             max_imp = imp
             b = a
-
     #print(b)
-
     oracle.update(b)
 
     return b
@@ -138,6 +137,7 @@ def check(GC):
     global count
     global rot
 
+    # sum all rotations of each cluster
     prob_red = sum(GC.oracle.Ph[0:8])
     prob_brown = sum(GC.oracle.Ph[8:16])
     prob_blue = GC.oracle.Ph[16]
@@ -206,6 +206,7 @@ ideal = np.load('./data/ideal50.npy')
 
 # which neurons to test
 neuronnum = int(input('Neuron: '))
+# set rng seed
 seednum = int(input('Seed: '))
 np.random.seed(seednum)
 
@@ -222,10 +223,15 @@ ph = np.array([.02]*16 + [0.2] + [.02]*24)
 print('\n'+'Mutual Information')
 NC = Information_utility(probh,ph,neuron_resp)
 GC = greedy(NC,list(range(362)),300)
+
+# how many times the hypothesis reaches 0.999 probability
 count = [0]*6
+
+# stores stimuli, responses, and rotation to calculate r-value
 stim = []
 responses = []
 rot = 0
+
 for i in range(300):
     stimShown = GC.solve()
 
@@ -233,6 +239,8 @@ for i in range(300):
     responses.append(GC.oracle.response)
     checkC = check(GC)
     if checkC != None:
+        # check R value
+        # if R value over 0.6, return cluster chosen
         if checkPearsonR(stim,responses,rot) >= 0.6:
             print('Cluster: ' + clusters[checkC])
             print('Stimuli: ' + str(i))
