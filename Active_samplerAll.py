@@ -262,6 +262,8 @@ for i in range(300):
             break
         else:
             count = [0]*6
+            checkC = None
+            
     if i == 299 and checkC == None:
         print('Unclassified')
         break

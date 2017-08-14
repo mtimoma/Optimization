@@ -182,7 +182,7 @@ def neuron_resp(a):
     #  50 times the mean responses of neuron '0' to stimulus 'a'
     #
     #  Added by Wyeth to control random seed
-    np.random.seed(seednum)
+    
     return np.random.poisson(50*X[neuronnum][a])
 
 
@@ -222,6 +222,7 @@ for n in range(cells):
         # which neurons to test
         neuronnum = n
         seednum = 1000 + 123*s
+        np.random.seed(seednum)
         ####################################
         # Create Objects and Run Simulation #
         ####################################
