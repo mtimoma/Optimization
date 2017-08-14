@@ -209,3 +209,12 @@ for size in range(1,26):
     ideal.append(idem)
 
 np.save("DATA/ideal", ideal)
+
+maxr = []
+    for i in range(len(Pr_h)):
+        max_r = []
+        for j in range(len(Pr_h[0])):
+            max.append(Pr_h[i][j])
+        maxr.append(max_r)
+
+np.save("DATA/maxr",maxr)
