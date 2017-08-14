@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import poisson
 from scipy.stats import pearsonr
-
+from tempfile import TemporaryFile
 
 ##########################
 # OPENING RAW DATA FILES #
@@ -193,7 +193,12 @@ for size in range(1,26):
         probh_m.append(pro)
     probh.append(probh_m)
 
-np.save("DATA/probh", probh)
+np.savez("DATA/probhz", probh[0], probh[1], probh[2], probh[3], probh[4],
+    probh[5], probh[6], probh[7], probh[8], probh[9],
+    probh[10], probh[11], probh[12], probh[13], probh[14],
+    probh[15], probh[16], probh[17], probh[18], probh[19],
+    probh[20], probh[21], probh[22], probh[23], probh[24])
+#np.save("DATA/probh", probh)
 
 #creates 'ideal' cells for each group
 #array of size 25x41x362
@@ -211,10 +216,10 @@ for size in range(1,26):
 np.save("DATA/ideal", ideal)
 
 maxr = []
-    for i in range(len(Pr_h)):
-        max_r = []
-        for j in range(len(Pr_h[0])):
-            max.append(Pr_h[i][j])
-        maxr.append(max_r)
+for i in range(len(Pr_h)):
+    max_r = []
+    for j in range(len(Pr_h[0])):
+        max_r.append(Pr_h[i][j])
+    maxr.append(max_r)
 
 np.save("DATA/maxr",maxr)

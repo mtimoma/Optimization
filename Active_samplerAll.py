@@ -187,7 +187,12 @@ for i in range(len(n)):
     maxF.append(float(n[i]))
 
 # Prob of Hypotheses?  Clustering
-probh = np.load('./data/probh.npy')
+#probh = np.load('./data/probh.npy')
+probh = []
+probhz = np.load('./data/probhz.npz')
+for size in probhz:
+    probh.append(probhz[size])
+
 ideal = np.load('./data/ideal.npy')
 norms = np.load('./data/maxr.npy')
 
@@ -218,19 +223,18 @@ meanresp = meanresp.tolist()
 
 for resp in range(len(meanresp)):
     if meanresp[resp] > 24:
-        #print('ah')
         meanresp[resp] = 24
     else:
         meanresp[resp] -= 1
 
-print (meanresp)
+#print (meanresp)
 
 #####################################
 # Create Objects and Run Simulation #
 #####################################
 
 # Mutual Information
-print('\n'+'Mutual Information')
+#print('\n'+'Mutual Information')
 NC = Information_utility(probh,ph,neuron_resp)
 GC = greedy(NC,list(range(362)),300)
 
