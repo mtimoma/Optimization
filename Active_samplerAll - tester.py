@@ -20,10 +20,6 @@ def argmax(oracle,all_elements):
     total = len(stim)
 
     for a in all_elements:
-        
-        #used to not show same stimuli consecutively
-        if a in stim[total-5:total+1]:
-            continue
 
         imp = oracle.evaluate(a)
 
@@ -169,7 +165,6 @@ def neuron_resp(a):
     #  Return a random integer that is Poisson distributed with mean equal to
     #  50 times the mean responses of neuron '0' to stimulus 'a'
     #
-    #  Added by Wyeth to control random seed
     return np.random.poisson(maxF[neuronnum]*X[neuronnum][a])
 
 
