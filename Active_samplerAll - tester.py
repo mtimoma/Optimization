@@ -167,6 +167,29 @@ def neuron_resp(a):
     #
     return np.random.poisson(maxF[neuronnum]*X[neuronnum][a])
 
+#################################
+# Find Means for All Hypotheses #
+#################################
+
+# find mean response for each hypothesis by dividing response by normalized
+def findMean(stim,resp):
+    meanresp = np.array([0]*41)
+    for s in range(len(stim)):
+        for i in range(41):
+            meanresp[i] += resp[s] / norms[i][stim[s]]
+    meanresp = meanresp / len(stim)
+    meanresp = np.round(meanresp).astype(int)
+    meanresp = meanresp.tolist()
+
+    # if any mean is greater than 25, change it to 25
+    for resp in range(len(meanresp)):
+        if meanresp[resp] > 24:
+            meanresp[resp] = 24
+        else:
+            meanresp[resp] -= 1
+
+    return meanresp
+
 
 ###################
 # INITIALIZE DATA #
@@ -213,27 +236,13 @@ for n in range(cells):
         seednum = 1000 + 123*s
         np.random.seed(seednum)
 
-        #################################
-        # Find Means for All Hypotheses #
-        #################################
-
+        # choose 5 random stimulus
         initStim = np.random.randint(362, size=5)
-
-        meanresp = np.array([0]*41)
+        initResponse = []
         for stim in initStim:
-            for i in range(41):
-                meanresp[i] += neuron_resp(stim) / norms[i][stim]
-        meanresp = meanresp / len(initStim)
-        meanresp = np.round(meanresp).astype(int)
-        meanresp = meanresp.tolist()
+            initResponse.append(neuron_resp(stim))
 
-        for resp in range(len(meanresp)):
-            if meanresp[resp] > 24:
-                meanresp[resp] = 24
-            else:
-                meanresp[resp] -= 1
-
-        #print (meanresp)
+        meanresp = findMean(initStim,initResponse)
 
         #####################################
         # Create Objects and Run Simulation #
@@ -263,7 +272,7 @@ for n in range(cells):
                 # if R value over 0.6, return cluster chosen
                 if checkPearsonR(stim,responses,rot) >= 0.6:
                     f.write(clusters[checkC]+',')
-                    f.write(str(i)+',')
+                    f.write(str(i+5)+',')
                     f.write(str(meanresp[rot]+1)+',')
                     break
                 else:
@@ -273,4 +282,14 @@ for n in range(cells):
             if i == 299 and checkC == None:
                 f.write('Unclassified,300,,')
                 break
+
+            # Recalculate means and Ph after 10 stimuli
+            if i%10 == 0 and i > 0:
+                meanresp = findMean(stim,responses)
+                Ph = np.array([.02]*16 + [0.2] + [.02]*24)
+                for a in range(len(stim)):
+                    Pr_h = probh[meanresp[Ph.tolist().index(max(Ph))]]
+                    Ph = Pr_h[stim[a],responses[a],:]*Ph/sum(Pr_h[stim[a],responses[a],:]*Ph)
+                GC.oracle.Ph = Ph
+
     print('Done '+str(n+1))
