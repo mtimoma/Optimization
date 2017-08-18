@@ -1,60 +1,57 @@
 from __future__ import division
 import numpy as np
-#from scipy.stats import pearsonr
+import sys
 
-#Abstract Class for Oracles
+
+####################
+# Creating Objects #
+####################
 
 class Oracle(object):
 
     def evaluate(self,a):
-
         raise NotImplementedError()
 
     def update(self,a):
-
         raise NotImplementedError()
 
 def argmax(oracle,all_elements):
 
     max_imp = -999999999
-    total = len(stim)
 
     for a in all_elements:
+
+        # prevent it from choosing stimulus chosen in last 2 stim
+        if a in stim[-1:-3:-1]:
+            continue
 
         imp = oracle.evaluate(a)
 
         if imp > max_imp:
             max_imp = imp
             b = a
-    #print(b)
+
     oracle.update(b)
-
     return b
-
 
 class greedy(object):
 
     def __init__(self,oracle,all_elements,k):
-
         self.oracle = oracle
         self.elements = all_elements
         self.k = k
         self.chosen_elements = []
 
     def solve(self):
-        
         if self.elements == []:
             return []
 
         chosen = argmax(self.oracle,self.elements)
-        #self.chosen_elements.append(chosen)
-            #self.elements.remove(chosen.__getitem__(0))
-
         return chosen
 
-
+'''Mutual information Utility'''
 class Information_utility(Oracle):
-    '''Mutual information Utility'''
+
     def __init__(self,Pr_h,Ph,neuron_resp):
         self.Ph = Ph
         self.Pr_h = probh[meanresp[self.Ph.tolist().index(max(self.Ph))]]
@@ -62,36 +59,11 @@ class Information_utility(Oracle):
         self.Phistory = [Ph]
     
     def evaluate(self,a):
-
-        #self.Ph = self.Ph.tolist()
+        # use probability vector with mean for hypothesis with greatest probability
         self.Pr_h = probh[meanresp[self.Ph.tolist().index(max(self.Ph))]]
-        #  nr - the number of responses, e.g., 80
-        #  nh - the number of hypotheses, e.g., 9
-        #
-        #  Multiply a 2D array (nr x nh) by a 1D array (nh) to get a 1D array
-        #  that is 'nr' long and contains the probability of observing
-        #  any spike count value when stimulus 'a' is shown.
-        #
+        #  get a 1D array of Poisson probability
         Pr = self.Pr_h[a,:,:].dot(self.Ph)
-
-        #
         #  Compute the Mutual information:
-        #
-        #    I(r;h) = H(r) - H(r|h)
-        #   
-        #  which can be rewritten as  I(h;r) = H(h) - H(h|r), which is how
-        #  Reza wrote it in his report.
-        #
-        #  The first term is H(r), where 'Pr' was computed by the previous line.
-        #  The second term is H(r|h), which follows the definition of
-        #  conditional entropy:
-        #
-        #    H(r|h) = SUM_h p(h) H(r|h)
-        #
-        #  The 'entropy(...)' part computes an array of entropies (of r) 
-        #  for each hypothesis.  The ".dot" part multiplies this by the
-        #  current prior for each hypothesis.
-        #
         return entropy(Pr) - entropy(self.Pr_h[a,:,:]).dot(self.Ph)
 
     def update(self,a):
@@ -105,10 +77,18 @@ class Information_utility(Oracle):
         self.Ph = self.Pr_h[a,self.response,:]*self.Ph/sum(self.Pr_h[a,self.response,:]*self.Ph)        
         self.Phistory.append(self.Ph)
 
+# entropy equation used for Mutual Information
+# used because scipy may not run on machines
 def entropy(P):
     return -sum(P * np.log(P))
 
 
+##################################
+# Criteria for Returning Cluster #
+##################################
+
+# check if hypothesis has probability greater than 0.999
+#                                     greater than 10x
 def check(GC):
     global count
     global rot
@@ -141,6 +121,7 @@ def check(GC):
         count[5] += 1
         rot = GC.oracle.Ph.tolist().index(max(GC.oracle.Ph[33:41]))
     else:
+        # reset count to 0 if no probability is greater than 0.999
         count = [0,0,0,0,0,0]
 
     # if hypothesis had probability greater than 0.999 for last 10 times
@@ -148,52 +129,26 @@ def check(GC):
     if 10 in count:
         return count.index(10)
 
-def checkPearsonR(stim,responses,rot):
-    expected = []
-    for each in stim:
-        expected.append(ideal[meanresp[rot]][rot][each])
+# check r-value between responses and an ideal cell of same cluster
+def checkPearsonR(stim,responses,rot,clus):
+    allcorr = []
+    # for every core member of the group
+    for core in range(len(ideal[meanresp[rot]][rot])):
+        # create vector of expected responses based on what set of stimuli were shown
+        expected = []
+        for each in stim:
+            expected.append(ideal[meanresp[rot]][rot][core][each])
 
-    #print(np.corrcoef(expected,list(responses.values()))[0][1])
-    # find correlation coefficient between unknown cell's responses and ideal cell
-    return np.corrcoef(expected,responses)[0][1]
-    
-def neuron_resp(a):
-    #
-    #  'a' is the index of the stimulus.
-    #  'X' contains normalized responses in the range of 0..1
-    #
-    #  Return a random integer that is Poisson distributed with mean equal to
-    #  50 times the mean responses of neuron '0' to stimulus 'a'
-    #
-    return np.random.poisson(maxF[neuronnum]*X[neuronnum][a])
+        # find correlation coefficient between unknown cell's responses and ideal cell
+        allcorr.append(np.corrcoef(expected,responses)[0][1])
 
-#################################
-# Find Means for All Hypotheses #
-#################################
-
-# find mean response for each hypothesis by dividing response by normalized
-def findMean(stim,resp):
-    meanresp = np.array([0]*41)
-    for s in range(len(stim)):
-        for i in range(41):
-            meanresp[i] += resp[s] / norms[i][stim[s]]
-    meanresp = meanresp / len(stim)
-    meanresp = np.round(meanresp).astype(int)
-    meanresp = meanresp.tolist()
-
-    # if any mean is greater than 25, change it to 25
-    for resp in range(len(meanresp)):
-        if meanresp[resp] > 24:
-            meanresp[resp] = 24
-        else:
-            meanresp[resp] -= 1
-
-    return meanresp
+    # return the largest correlation coefficient
+    return max(allcorr)
 
 
-###################
-# INITIALIZE DATA #
-###################
+#######################################
+# Getting Neuron Response to Stimulus #
+#######################################
 
 # Load normalized responses
 X = np.load('./data/all_resp.npy')
@@ -204,37 +159,62 @@ with open("RawData/MaxFiringRate/max_resp.txt") as maxFire:
 for i in range(len(n)):
     maxF.append(float(n[i]))
 
-# Prob of Hypotheses?  Clustering
-#probh = np.load('./data/probh.npy')
-probh = []
-probhz = np.load('./data/probhz.npz')
-for size in probhz:
-    probh.append(probhz[size])
+def neuron_resp(a):
+    #  Return a noise response to stimulus 'a'
+    return np.random.poisson(maxF[neuronnum]*X[neuronnum][a])
 
+
+###################
+# INITIALIZE DATA #
+###################
+
+# load probability vectors for all sizes
+probh = np.load('./data/probh.npy')
 ideal = np.load('./data/ideal.npy')
 norms = np.load('./data/maxr.npy')
+# how many neuron to test
+cells = int(input('# of Neurons: '))
+trials = int(input('# of Trials: '))
 
 clusters = ['Red','Brown','Blue','Green','Purple','Gray']
 
 #  ph - Array of current Pr[hypoth]
 ph = np.array([.02]*16 + [0.2] + [.02]*24)
 
-# Set up files to write to
 f = open('MutualAll.csv','w')
-
-# Choose how many cells and how many trials
-cells = int(input('Cells: '))
-trials = int(input('Trials: '))
-
 for i in range(trials):
     f.write('Cluster,Stimuli,Size,')
 
+#################################
+# Find Means for All Hypotheses #
+#################################
+
+# find mean response for each hypothesis by dividing response by normalized
+def findMean(stim,resp):
+    mr = np.array([0]*41)
+    for s in range(len(stim)):
+        for i in range(41):
+            mr[i] += resp[s] / norms[i][stim[s]]
+    mr = mr / len(stim)
+
+    # if any mean is greater than 25, change it to 25
+    for resp in range(len(mr)):
+        if mr[resp] > 24:
+            mr[resp] = 24
+        else:
+            mr[resp] -= 1
+
+    return mr
+
+sys.stdout.write('0/' + str(cells))
+sys.stdout.flush()
+
 for n in range(cells):
     f.write('\n')
+    neuronnum = n
     for s in range(trials):
-        neuronnum = n
-        seednum = 1000 + 123*s
-        np.random.seed(seednum)
+        # set rng seed
+        np.random.seed(1000+s*123)
 
         # choose 5 random stimulus
         initStim = np.random.randint(362, size=5)
@@ -242,14 +222,15 @@ for n in range(cells):
         for stim in initStim:
             initResponse.append(neuron_resp(stim))
 
-        meanresp = findMean(initStim,initResponse)
+        meanrespUR = findMean(initStim,initResponse)
+        meanresp = np.round(meanrespUR).astype(int)
+
 
         #####################################
         # Create Objects and Run Simulation #
         #####################################
 
         # Mutual Information
-        #print('\n'+'Mutual Information')
         NC = Information_utility(probh,ph,neuron_resp)
         GC = greedy(NC,list(range(362)),300)
 
@@ -264,13 +245,15 @@ for n in range(cells):
         for i in range(300):
             stimShown = GC.solve()
 
+            # create lists of stimuli and responses for later use
             stim.append(stimShown)
             responses.append(GC.oracle.response)
+
+            # check if any hypothesis has count above 10 
             checkC = check(GC)
             if checkC != None:
-                # check R value
-                # if R value over 0.6, return cluster chosen
-                if checkPearsonR(stim,responses,rot) >= 0.6:
+                # if r value over 0.6, return cluster chosen
+                if checkPearsonR(stim,responses,rot,checkC) >= 0.6:
                     f.write(clusters[checkC]+',')
                     f.write(str(i+5)+',')
                     f.write(str(meanresp[rot]+1)+',')
@@ -278,18 +261,25 @@ for n in range(cells):
                 else:
                     count = [0]*6
                     checkC = None
-                    
+            # return 'Unclassified' if reach max stimuli       
             if i == 299 and checkC == None:
                 f.write('Unclassified,300,,')
                 break
 
-            # Recalculate means and Ph after 10 stimuli
+            # Recalculate means
+            meanrespUR = ((i+5)*meanrespUR + findMean([stim[i]],[responses[i]])) / (i+6)
+            meanresp = np.round(meanrespUR).astype(int)
+
+            # Recalculate Ph after 10 stimuli
             if i%10 == 0 and i > 0:
-                meanresp = findMean(stim,responses)
                 Ph = np.array([.02]*16 + [0.2] + [.02]*24)
                 for a in range(len(stim)):
                     Pr_h = probh[meanresp[Ph.tolist().index(max(Ph))]]
                     Ph = Pr_h[stim[a],responses[a],:]*Ph/sum(Pr_h[stim[a],responses[a],:]*Ph)
                 GC.oracle.Ph = Ph
 
-    print('Done '+str(n+1))
+    sys.stdout.write('\r')
+    sys.stdout.write(str(n+1) + '/' + str(cells))
+    sys.stdout.flush()
+
+f.close()

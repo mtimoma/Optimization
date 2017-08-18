@@ -17,9 +17,13 @@ class Oracle(object):
 def argmax(oracle,all_elements):
 
     max_imp = -999999999
-    total = len(stim)
 
     for a in all_elements:
+
+        # prevent it from choosing stimulus chosen in last 2 stim
+        if a in stim[-1:-3:-1]:
+            continue
+
         imp = oracle.evaluate(a)
 
         if imp > max_imp:
@@ -125,15 +129,21 @@ def check(GC):
         return count.index(10)
 
 # check r-value between responses and an ideal cell of same cluster
-def checkPearsonR(stim,responses,rot):
-    expected = []
-    # create vector of expected responses based on what set of stimuli were shown
-    for each in stim:
-        expected.append(ideal[meanresp[rot]][rot][each])
+def checkPearsonR(stim,responses,rot,clus):
+    allcorr = []
+    # for every core member of the group
+    for core in range(len(ideal[meanresp[rot]][rot])):
+        # create vector of expected responses based on what set of stimuli were shown
+        expected = []
+        for each in stim:
+            expected.append(ideal[meanresp[rot]][rot][core][each])
 
-    # find correlation coefficient between unknown cell's responses and ideal cell
-    return np.corrcoef(expected,responses)[0][1]
-    
+        # find correlation coefficient between unknown cell's responses and ideal cell
+        allcorr.append(np.corrcoef(expected,responses)[0][1])
+
+    # return the largest correlation coefficient
+    return max(allcorr)
+
 
 #######################################
 # Getting Neuron Response to Stimulus #
@@ -158,14 +168,9 @@ def neuron_resp(a):
 ###################
 
 # load probability vectors for all sizes
-probh = []
-probhz = np.load('./data/probhz.npz')
-for size in probhz:
-    probh.append(probhz[size])
-
+probh = np.load('./data/probh.npy')
 ideal = np.load('./data/ideal.npy')
 norms = np.load('./data/maxr.npy')
-
 # which neuron to test
 neuronnum = int(input('Neuron: '))
 # set rng seed
@@ -184,22 +189,20 @@ ph = np.array([.02]*16 + [0.2] + [.02]*24)
 
 # find mean response for each hypothesis by dividing response by normalized
 def findMean(stim,resp):
-    meanresp = np.array([0]*41)
+    mr = np.array([0]*41)
     for s in range(len(stim)):
         for i in range(41):
-            meanresp[i] += resp[s] / norms[i][stim[s]]
-    meanresp = meanresp / len(stim)
-    meanresp = np.round(meanresp).astype(int)
-    meanresp = meanresp.tolist()
+            mr[i] += resp[s] / norms[i][stim[s]]
+    mr = mr / len(stim)
 
     # if any mean is greater than 25, change it to 25
-    for resp in range(len(meanresp)):
-        if meanresp[resp] > 24:
-            meanresp[resp] = 24
+    for resp in range(len(mr)):
+        if mr[resp] > 24:
+            mr[resp] = 24
         else:
-            meanresp[resp] -= 1
+            mr[resp] -= 1
 
-    return meanresp
+    return mr
 
 # choose 5 random stimulus
 initStim = np.random.randint(362, size=5)
@@ -207,7 +210,8 @@ initResponse = []
 for stim in initStim:
     initResponse.append(neuron_resp(stim))
 
-meanresp = findMean(initStim,initResponse)
+meanrespUR = findMean(initStim,initResponse)
+meanresp = np.round(meanrespUR).astype(int)
 
 
 #####################################
@@ -237,7 +241,7 @@ for i in range(300):
     checkC = check(GC)
     if checkC != None:
         # if r value over 0.6, return cluster chosen
-        if checkPearsonR(stim,responses,rot) >= 0.6:
+        if checkPearsonR(stim,responses,rot,checkC) >= 0.6:
             print('Cluster: ' + clusters[checkC])
             print('Stimuli: ' + str(i+5))
             print('Size: ' + str(meanresp[rot]+1))
@@ -250,9 +254,12 @@ for i in range(300):
         print('Unclassified')
         break
 
-    # Recalculate means and Ph after 10 stimuli
+    # Recalculate means
+    meanrespUR = ((i+5)*meanrespUR + findMean([stim[i]],[responses[i]])) / (i+6)
+    meanresp = np.round(meanrespUR).astype(int)
+
+    # Recalculate Ph after 10 stimuli
     if i%10 == 0 and i > 0:
-        meanresp = findMean(stim,responses)
         Ph = np.array([.02]*16 + [0.2] + [.02]*24)
         for a in range(len(stim)):
             Pr_h = probh[meanresp[Ph.tolist().index(max(Ph))]]

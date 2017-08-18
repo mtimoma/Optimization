@@ -1,14 +1,15 @@
 import numpy as np
 from scipy.stats import poisson
 from scipy.stats import pearsonr
-from tempfile import TemporaryFile
+import sys
+#from tempfile import TemporaryFile
+
 
 ##########################
 # OPENING RAW DATA FILES #
 ##########################
 
-#
-# Opens NormResponse files for first 172 neurons
+# Opens NormResponse files for first 215 neurons
 resp = []
 for i in range(215):
     respf = []
@@ -19,7 +20,6 @@ for i in range(215):
 # change array of all responses into numpy float array
 resph = np.asarray(resp).astype(np.float)
 
-#
 # Open Clusters.txt into array
 cluster = []
 with open("RawData/Clusters/Clusters.txt") as clusters:
@@ -43,12 +43,14 @@ for each in c:
     # returns array with neuron # in cluster and r-value for each
     cluster.append(cloos)
 
+
 ###########################
 # FIND MEAN NORMALIZATION #
 ###########################
 
 for nnum in range(len(resph)):
     resph[nnum] = resph[nnum] / np.mean(resph[nnum])
+
 
 ##################
 # ALIGN ROTATION #
@@ -174,12 +176,15 @@ for clusnum in range(3,6):
                 clusclass[k + nrot - 1] = tr
         Pr_h.append(clusclass.tolist())
 
+
 ##############################
 # CREATING PROBABILITY ARRAY #
 ##############################
-probh = []
-
+print('Creating Poisson Distributions...')
+sys.stdout.write('0/25')
+sys.stdout.flush()
 # creates 25x362x80x41 array to cover all clusters
+probh = []
 for size in range(1,26):
     probh_m = []
     for i in range(len(Pr_h[0])):
@@ -192,34 +197,84 @@ for size in range(1,26):
             pro.append(pr)
         probh_m.append(pro)
     probh.append(probh_m)
+    sys.stdout.write('\r')
+    sys.stdout.write(str(size) + '/25')
+    sys.stdout.flush()
 
-np.savez("DATA/probhz", probh[0], probh[1], probh[2], probh[3], probh[4],
-    probh[5], probh[6], probh[7], probh[8], probh[9],
-    probh[10], probh[11], probh[12], probh[13], probh[14],
-    probh[15], probh[16], probh[17], probh[18], probh[19],
-    probh[20], probh[21], probh[22], probh[23], probh[24])
-#np.save("DATA/probh", probh)
+np.save("DATA/probh", probh)
 
-#creates 'ideal' cells for each group
-#array of size 25x41x362
-ideal = []
-
-for size in range(1,26):
-    idem = []
-    for i in range(len(Pr_h)):
-        ide = []
-        for j in range(len(Pr_h[0])):
-            ide.append(Pr_h[i][j] * size)
-        idem.append(ide)
-    ideal.append(idem)
-
-np.save("DATA/ideal", ideal)
-
+print('\nCreating Normalized Vectors...')
+sys.stdout.write('0/' + str(len(Pr_h)))
+sys.stdout.flush()
+#used to initially find means for all hypotheses
 maxr = []
 for i in range(len(Pr_h)):
     max_r = []
     for j in range(len(Pr_h[0])):
         max_r.append(Pr_h[i][j])
     maxr.append(max_r)
+    sys.stdout.write('\r')
+    sys.stdout.write(str(i+1) + '/' + str(len(Pr_h)))
+    sys.stdout.flush()
 
 np.save("DATA/maxr",maxr)
+
+
+#########################################
+# Create Ideal Cells for R Calculations #
+#########################################
+
+# Open cores.txt into array
+print('\nCreating Core Cells...')
+sys.stdout.write('0/25')
+sys.stdout.flush()
+cores = []
+with open("RawData/Clusters/Cores.txt") as core:
+    co = core.read().splitlines()
+
+for each in co:
+    # splits the text file into an array
+    ceach = each.split(',')
+    # removes the cluster name from array
+    del ceach[0]
+    cores.append(list(map(int, ceach)))
+
+# create ideal vectors for all cores and rotations
+ideal = []
+for size in range(1,26):
+    idea = []
+    for hyp in range(6):
+        # no need for rotation if cluster is blue
+        if hyp == 2:
+            ide = []
+            for h in cores[hyp]:
+                ide.append(resph[h-1] * size)
+            idea.append(ide)
+
+        # include 8 rotations for all clusters that are not blue
+        else:
+            ide = []
+            for h in cores[hyp]:
+                ide.append(resph[h-1] * size)
+            idea.append(ide)
+            for rot in range(7):
+                ide = [] 
+                for h in cores[hyp]:
+                    for i in range(51):
+                        nrot = glob_nrot[i]
+                        k = glob_shi0[i]
+
+                        if nrot > 1:
+                            tr = resph[h - 1][k]
+                            for j in range(1, nrot):
+                                resph[h - 1][k + j - 1] = resph[h - 1][k + j]
+                            resph[h - 1][k + nrot - 1] = tr                  
+                    ide.append(resph[h-1] * size)
+                idea.append(ide)
+                
+    ideal.append(idea)
+    sys.stdout.write('\r')
+    sys.stdout.write(str(size) + '/25')
+    sys.stdout.flush()
+
+np.save("DATA/ideal", ideal)
