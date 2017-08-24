@@ -1,14 +1,15 @@
 import numpy as np
 from scipy.stats import poisson
 from scipy.stats import pearsonr
+import sys
+#from tempfile import TemporaryFile
 
 
 ##########################
 # OPENING RAW DATA FILES #
 ##########################
 
-#
-# Opens NormResponse files for first 172 neurons
+# Opens NormResponse files for first 215 neurons
 resp = []
 for i in range(215):
     respf = []
@@ -19,10 +20,9 @@ for i in range(215):
 # change array of all responses into numpy float array
 resph = np.asarray(resp).astype(np.float)
 
-#
 # Open Clusters.txt into array
 cluster = []
-with open("RawData/Clusters/Clusters.txt") as clusters:
+with open("RawData/Clusters/Training_Clusters.txt") as clusters:
     c = clusters.read().splitlines()
 for each in c:
     cloos = []
@@ -142,7 +142,6 @@ for neuron in cluster[2]:
     blue = blue + resph[int(neuron[0]) - 1]*int(neuron[1])
 # average normalized mean response from blue cluster neurons per stimulus
 blue = blue / np.sum(cluster[2], axis = 0)[1]
-#blue = blue / max(blue)
 Pr_h.append(blue)
 
 #GREEN and PURPLE and GRAY
@@ -169,30 +168,74 @@ for clusnum in range(3,6):
                 clusclass[k + nrot - 1] = tr
         Pr_h.append(clusclass.tolist())
 
+
 ##############################
 # CREATING PROBABILITY ARRAY #
 ##############################
+print('Creating Poisson Distributions...')
+# creates 362x80x41 array to cover all clusters
 
-#Using 50 as maximum
-#creates 362x80x41 array to cover all clusters
-probh50 = []
+probh_m = []
 for i in range(len(Pr_h[0])):
-    pro50 = []
+    pro = []
     for j in range(80):
-        pr50 = []
+        pr = []
         for k in range(len(Pr_h)):
             # Poisson probabilities for responses 0-120 given mean
-            pr50.append(poisson.pmf(j, Pr_h[k][i] * 50, loc=0))
-        pro50.append(pr50)
-    probh50.append(pro50)
-np.save("DATA/probh50", probh50)
+            pr.append(poisson.pmf(j, Pr_h[k][i] * 50, loc=0))
+        pro.append(pr)
+    probh_m.append(pro)
 
-#creates 'ideal' cells for each group
-#array of size 41x362
-ideal50 = []
-for i in range(len(Pr_h)):
-    ide50 = []
-    for j in range(len(Pr_h[0])):
-        ide50.append(Pr_h[i][j] * 50)
-    ideal50.append(ide50)
-np.save("DATA/ideal50", ideal50)
+np.save("DATA/probh50", probh_m)
+
+
+#########################################
+# Create Ideal Cells for R Calculations #
+#########################################
+
+# Open cores.txt into array
+print('\nCreating Core Cells...')
+
+cores = []
+with open("RawData/Clusters/Training_Cores.txt") as core:
+    co = core.read().splitlines()
+
+for each in co:
+    # splits the text file into an array
+    ceach = each.split(',')
+    # removes the cluster name from array
+    del ceach[0]
+    cores.append(list(map(int, ceach)))
+
+# create ideal vectors for all cores and rotations
+idea = []
+for hyp in range(6):
+    # no need for rotation if cluster is blue
+    if hyp == 2:
+        ide = []
+        for h in cores[hyp]:
+            ide.append(resph[h-1] * 50)
+        idea.append(ide)
+
+    # include 8 rotations for all clusters that are not blue
+    else:
+        ide = []
+        for h in cores[hyp]:
+            ide.append(resph[h-1] * 50)
+        idea.append(ide)
+        for rot in range(7):
+            ide = [] 
+            for h in cores[hyp]:
+                for i in range(51):
+                    nrot = glob_nrot[i]
+                    k = glob_shi0[i]
+
+                    if nrot > 1:
+                        tr = resph[h - 1][k]
+                        for j in range(1, nrot):
+                            resph[h - 1][k + j - 1] = resph[h - 1][k + j]
+                        resph[h - 1][k + nrot - 1] = tr                  
+                ide.append(resph[h-1] * 50)
+            idea.append(ide)
+
+np.save("DATA/ideal50", idea)

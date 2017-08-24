@@ -1,7 +1,10 @@
 from __future__ import division
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import cycler
 
 
+minCorr = 0.4
 ####################
 # Creating Objects #
 ####################
@@ -79,6 +82,7 @@ class Information_utility(Oracle):
 # entropy equation used for Mutual Information
 # used because scipy may not run on machines
 def entropy(P):
+    np.seterr(all='ignore')
     return -sum(P * np.log(P))
 
 
@@ -120,8 +124,8 @@ def check(GC):
         count[5] += 1
         rot = GC.oracle.Ph.tolist().index(max(GC.oracle.Ph[33:41]))
     else:
-        # reset count to 0 if no probability is greater than 0.999
-        count = [0,0,0,0,0,0]
+        # divide count by 2 if no probability is greater than 0.999
+        count = (np.array(count)/2).astype(int).tolist()
 
     # if hypothesis had probability greater than 0.999 for last 10 times
     # return that hypothesis
@@ -131,18 +135,21 @@ def check(GC):
 # check r-value between responses and an ideal cell of same cluster
 def checkPearsonR(stim,responses,rot,clus):
     allcorr = []
+    # normalize responses and multiply by 25
+    # this helps to make r-value more accurate
+    responses=np.asarray(responses)*25/meanresp[rot]
     # for every core member of the group
-    for core in range(len(ideal[meanresp[rot]][rot])):
+    for core in range(len(ideal[24][rot])):
         # create vector of expected responses based on what set of stimuli were shown
         expected = []
         for each in stim:
-            expected.append(ideal[meanresp[rot]][rot][core][each])
+            expected.append(ideal[24][rot][core][each])
 
         # find correlation coefficient between unknown cell's responses and ideal cell
         allcorr.append(np.corrcoef(expected,responses)[0][1])
 
-    # return the largest correlation coefficient
-    return max(allcorr)
+    # return the largest adjusted correlation coefficient
+    return max(allcorr)*(1+(1-max(allcorr)**2)/(2*len(stim)))
 
 
 #######################################
@@ -160,7 +167,11 @@ for i in range(len(n)):
 
 def neuron_resp(a):
     #  Return a noise response to stimulus 'a'
-    return np.random.poisson(maxF[neuronnum-1]*X[neuronnum-1][a])
+    resp = np.random.poisson(maxF[neuronnum]*X[neuronnum][a])
+    if resp < 80:
+        return resp
+    else:
+        return 79
 
 
 ###################
@@ -240,8 +251,8 @@ for i in range(300):
     # check if any hypothesis has count above 10 
     checkC = check(GC)
     if checkC != None:
-        # if r value over 0.6, return cluster chosen
-        if checkPearsonR(stim,responses,rot,checkC) >= 0.6:
+        # if r value over minimum correlation set, return cluster chosen
+        if checkPearsonR(stim,responses,rot,checkC) >= minCorr:
             print('Cluster: ' + clusters[checkC])
             print('Stimuli: ' + str(i+5))
             print('Size: ' + str(meanresp[rot]+1))
@@ -265,3 +276,28 @@ for i in range(300):
             Pr_h = probh[meanresp[Ph.tolist().index(max(Ph))]]
             Ph = Pr_h[stim[a],responses[a],:]*Ph/sum(Pr_h[stim[a],responses[a],:]*Ph)
         GC.oracle.Ph = Ph
+
+
+#########
+# GRAPH #
+#########
+
+plt.rcParams['xtick.labelsize'] = 12
+plt.rcParams['ytick.labelsize'] = 12
+plt.rcParams['legend.fontsize'] = 14
+plt.rcParams['axes.prop_cycle'] = cycler('color',['r','#985114','b','g','m','0.40'])
+NCP = []
+for i in range(len(GC.oracle.Phistory)):
+    NCP.append([sum(GC.oracle.Phistory[i][0:8]),
+               sum(GC.oracle.Phistory[i][8:16]),
+               GC.oracle.Phistory[i][16],
+               sum(GC.oracle.Phistory[i][17:25]),
+               sum(GC.oracle.Phistory[i][25:33]),
+               sum(GC.oracle.Phistory[i][33:41])])
+
+fig, ax = plt.subplots(1,1)
+ax.plot(np.array(NCP))
+ax.set_xlabel('number of stimuli sampled',fontsize = 16)
+ax.set_ylabel('P(h)',fontsize = 16)
+
+plt.show()

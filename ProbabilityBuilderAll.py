@@ -22,7 +22,7 @@ resph = np.asarray(resp).astype(np.float)
 
 # Open Clusters.txt into array
 cluster = []
-with open("RawData/Clusters/Clusters.txt") as clusters:
+with open("RawData/Clusters/Training_Clusters.txt") as clusters:
     c = clusters.read().splitlines()
 for each in c:
     cloos = []
@@ -229,7 +229,7 @@ print('\nCreating Core Cells...')
 sys.stdout.write('0/25')
 sys.stdout.flush()
 cores = []
-with open("RawData/Clusters/Cores.txt") as core:
+with open("RawData/Clusters/Training_Cores.txt") as core:
     co = core.read().splitlines()
 
 for each in co:

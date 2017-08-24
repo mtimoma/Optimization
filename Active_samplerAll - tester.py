@@ -3,6 +3,7 @@ import numpy as np
 import sys
 
 
+minCorr = 0.4
 ####################
 # Creating Objects #
 ####################
@@ -80,6 +81,7 @@ class Information_utility(Oracle):
 # entropy equation used for Mutual Information
 # used because scipy may not run on machines
 def entropy(P):
+    np.seterr(all='ignore')
     return -sum(P * np.log(P))
 
 
@@ -122,7 +124,7 @@ def check(GC):
         rot = GC.oracle.Ph.tolist().index(max(GC.oracle.Ph[33:41]))
     else:
         # reset count to 0 if no probability is greater than 0.999
-        count = [0,0,0,0,0,0]
+        count = (np.array(count)/2).astype(int).tolist()
 
     # if hypothesis had probability greater than 0.999 for last 10 times
     # return that hypothesis
@@ -132,18 +134,21 @@ def check(GC):
 # check r-value between responses and an ideal cell of same cluster
 def checkPearsonR(stim,responses,rot,clus):
     allcorr = []
+    responses=np.asarray(responses)*25/meanresp[rot]
+    #responses = responses + [x + meanresp[rot] for x in responses]
     # for every core member of the group
     for core in range(len(ideal[meanresp[rot]][rot])):
         # create vector of expected responses based on what set of stimuli were shown
         expected = []
         for each in stim:
             expected.append(ideal[meanresp[rot]][rot][core][each])
+        #expected = expected + [x + meanresp[rot] for x in expected]
 
         # find correlation coefficient between unknown cell's responses and ideal cell
         allcorr.append(np.corrcoef(expected,responses)[0][1])
 
-    # return the largest correlation coefficient
-    return max(allcorr)
+    # return the largest adjusted correlation coefficient
+    return max(allcorr)*(1+(1-max(allcorr)**2)/(2*len(stim)))
 
 
 #######################################
@@ -161,7 +166,11 @@ for i in range(len(n)):
 
 def neuron_resp(a):
     #  Return a noise response to stimulus 'a'
-    return np.random.poisson(maxF[neuronnum]*X[neuronnum][a])
+    resp = np.random.poisson(maxF[neuronnum]*X[neuronnum][a])
+    if resp < 80:
+        return resp
+    else:
+        return 79
 
 
 ###################
@@ -194,7 +203,10 @@ def findMean(stim,resp):
     mr = np.array([0]*41)
     for s in range(len(stim)):
         for i in range(41):
-            mr[i] += resp[s] / norms[i][stim[s]]
+            if norms[i][stim[s]] == 0:
+                mr[i] = mr[i] + mr[i]/len(stim)
+            else:
+                mr[i] += resp[s] / norms[i][stim[s]]
     mr = mr / len(stim)
 
     # if any mean is greater than 25, change it to 25
@@ -253,7 +265,7 @@ for n in range(cells):
             checkC = check(GC)
             if checkC != None:
                 # if r value over 0.6, return cluster chosen
-                if checkPearsonR(stim,responses,rot,checkC) >= 0.6:
+                if checkPearsonR(stim,responses,rot,checkC) >= minCorr:
                     f.write(clusters[checkC]+',')
                     f.write(str(i+5)+',')
                     f.write(str(meanresp[rot]+1)+',')
