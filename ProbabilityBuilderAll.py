@@ -176,6 +176,17 @@ for clusnum in range(3,6):
                 clusclass[k + nrot - 1] = tr
         Pr_h.append(clusclass.tolist())
 
+# Unclassified
+uncl = []
+for size in range(1,26):
+    unc = []
+    for i in range(80):
+        if i <= np.pi*size:
+            unc.append(np.cos([i/size])[0]+1.01)
+        else:
+            unc.append(unc[len(unc)-1])
+    uncl.append(unc)
+
 
 ##############################
 # CREATING PROBABILITY ARRAY #
@@ -192,8 +203,9 @@ for size in range(1,26):
         for j in range(80):
             pr = []
             for k in range(len(Pr_h)):
-                # Poisson probabilities for responses 0-120 given mean
+                # Poisson probabilities for responses 0-80 given mean
                 pr.append(poisson.pmf(j, Pr_h[k][i] * size, loc=0))
+            pr.append(uncl[size-1][j]/np.sum(uncl[size-1]))
             pro.append(pr)
         probh_m.append(pro)
     probh.append(probh_m)
@@ -216,6 +228,7 @@ for i in range(len(Pr_h)):
     sys.stdout.write('\r')
     sys.stdout.write(str(i+1) + '/' + str(len(Pr_h)))
     sys.stdout.flush()
+maxr.append([1]*len(Pr_h[0]))
 
 np.save("DATA/maxr",maxr)
 

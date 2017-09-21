@@ -142,7 +142,7 @@ def checkPearsonR(stim,responses,rot,clus):
 
         # find correlation coefficient between unknown cell's responses and ideal cell
         allcorr.append(np.corrcoef(expected,responses)[0][1])
-    print(max(allcorr)*(1+(1-max(allcorr)**2)/(2*len(stim))))
+    
     # return the largest adjusted correlation coefficient
     return max(allcorr)*(1+(1-max(allcorr)**2)/(2*len(stim)))
 
